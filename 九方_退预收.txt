@@ -1,0 +1,129 @@
+-- 擒龙 退预收
+select pay_order_refund.create_time                                                   refund_time,  -- 退款时间
+       t_order.pay_time,                                                                            -- 付款时间
+       t_order.goods_no,                                                                            -- 商品编码
+       isnull(pay_order_refund.refund_price, sub_order_refund.sub_refund_apply_price) acc_amt,      -- 实际价格
+       t_order.cus_id                                                                 cust_no,      -- 客户Id
+       pay_order_refund.order_id                                                      order_no,     -- 订单号
+       pay_order_refund.sub_order_id                                                  sub_order_no, -- 子订单号
+       1                                                                              is_test,      -- 是否测试:1--否,0--是
+       t_order.offline_status,                                                                      -- 线上/线下：1-线上，0-线下
+       pay_order.pay_way                                                              tran_channel, -- 交易渠道
+       pay_order.pay_way                                                              pay_method    -- 缴费方式
+from rjhy_pay__t_order_refund pay_order_refund
+         left join rjhy_pay__t_order pay_order
+                   on pay_order_refund.order_id = pay_order.order_id
+                       and pay_order_refund.sub_order_id = pay_order.sub_order_id
+         left join rjhy_libra_uranus__t_order t_order
+                   on pay_order_refund.order_id = t_order.order_no
+         left join rjhy_libra_uranus__t_sub_order_refund sub_order_refund
+                   on pay_order_refund.sub_order_id = sub_order_refund.sub_order_no
+where pay_order_refund.create_time between '2021-08-01' and '2021-09-01'
+  and pay_order_refund.refund_status = 'REFUND_SUCCESS'
+  and pay_order_refund.refund_price > 1
+  and sub_order_refund.sub_refund_status = 1;
+
+
+-- 旗舰-退预收
+select pay_order_refund.create_time  refund_time,    -- 退款时间
+       t_order.payTime               pay_time,       -- 付款时间
+       t_order.goodsNo               goods_no,       -- 商品编码
+       pay_order_refund.refund_price acc_amt,        -- 实际价格
+       t_order.cusId                 cust_no,        -- 客户Id
+       pay_order_refund.order_id     order_no,       -- 订单号
+       pay_order_refund.sub_order_id sub_order_no,   -- 子订单号
+       1                             is_test,        -- 是否测试:1--否,0--是
+       t_order.form                  offline_status, -- 线上/线下：1-线上，0-线下
+       pay_order.pay_way             tran_channel,   -- 交易渠道
+       pay_order.pay_way             pay_method      -- 缴费方式
+from rjhy_pay__t_order_refund pay_order_refund
+         left join rjhy_pay__t_order pay_order
+                   on pay_order_refund.order_id = pay_order.order_id
+                       and pay_order_refund.sub_order_id = pay_order.sub_order_id
+         left join lcsdb__t_order t_order
+                   on pay_order_refund.order_id = t_order.orderno
+where pay_order_refund.create_time between '2021-08-01' and '2021-09-01'
+  and pay_order_refund.refund_status = 'REFUND_SUCCESS'
+  and pay_order_refund.refund_price > 1
+  and not exists(
+        select 1
+        from rjhy_libra_uranus__t_sub_order_refund sub_order_refund
+        where pay_order_refund.sub_order_id = sub_order_refund.sub_order_no
+    );
+
+
+-- 擒龙 退收入
+select refund.*
+from (
+         select pay_order_refund.create_time                                                   refund_time,  -- 退款时间
+                t_order.pay_time,                                                                            -- 付款时间
+                t_order.goods_no,                                                                            -- 商品编码
+                isnull(pay_order_refund.refund_price, sub_order_refund.sub_refund_apply_price) acc_amt,      -- 实际价格
+                t_order.cus_id                                                                 cust_no,      -- 客户Id
+                pay_order_refund.order_id                                                      order_no,     -- 订单号
+                pay_order_refund.sub_order_id                                                  sub_order_no, -- 子订单号
+                1                                                                              is_test,      -- 是否测试:1--否,0--是
+                t_order.offline_status,                                                                      -- 线上/线下：1-线上，0-线下
+                pay_order.pay_way                                                              tran_channel, -- 交易渠道
+                pay_order.pay_way                                                              pay_method    -- 缴费方式
+         from rjhy_pay__t_order_refund pay_order_refund
+                  left join rjhy_pay__t_order pay_order
+                            on pay_order_refund.order_id = pay_order.order_id
+                                and pay_order_refund.sub_order_id = pay_order.sub_order_id
+                  left join rjhy_libra_uranus__t_order t_order
+                            on pay_order_refund.order_id = t_order.order_no
+                  left join rjhy_libra_uranus__t_sub_order_refund sub_order_refund
+                            on pay_order_refund.sub_order_id = sub_order_refund.sub_order_no
+         where pay_order_refund.create_time between '2021-08-01' and '2021-09-01'
+           and pay_order_refund.refund_status = 'REFUND_SUCCESS'
+           and pay_order_refund.refund_price > 1
+           and sub_order_refund.sub_refund_status = 1
+     ) refund
+         inner join
+     (
+         select order_no
+         from rjhy_libra_uranus__t_order o_order
+         where pay_time between '2021-08-01' and '2021-09-01'
+           and pay_status in (3, 4)
+           and real_price <> 0
+     ) income
+     on refund.order_no = income.order_no;
+
+
+-- 旗舰 退收入
+select refund.*
+from (
+         select pay_order_refund.create_time  refund_time,    -- 退款时间
+                t_order.payTime               pay_time,       -- 付款时间
+                t_order.goodsNo               goods_no,       -- 商品编码
+                pay_order_refund.refund_price acc_amt,        -- 实际价格
+                t_order.cusId                 cust_no,        -- 客户Id
+                pay_order_refund.order_id     order_no,       -- 订单号
+                pay_order_refund.sub_order_id sub_order_no,   -- 子订单号
+                1                             is_test,        -- 是否测试:1--否,0--是
+                t_order.form                  offline_status, -- 线上/线下：1-线上，0-线下
+                pay_order.pay_way             tran_channel,   -- 交易渠道
+                pay_order.pay_way             pay_method      -- 缴费方式
+         from rjhy_pay__t_order_refund pay_order_refund
+                  left join rjhy_pay__t_order pay_order
+                            on pay_order_refund.order_id = pay_order.order_id
+                                and pay_order_refund.sub_order_id = pay_order.sub_order_id
+                  left join lcsdb__t_order t_order
+                            on pay_order_refund.order_id = t_order.orderno
+         where pay_order_refund.create_time between '2021-08-01' and '2021-09-01'
+           and pay_order_refund.refund_status = 'REFUND_SUCCESS'
+           and pay_order_refund.refund_price > 1
+           and not exists(
+                 select 1
+                 from rjhy_libra_uranus__t_sub_order_refund sub_order_refund
+                 where pay_order_refund.sub_order_id = sub_order_refund.sub_order_no
+             )
+     ) refund
+         inner join
+     (
+         select t_order.orderno order_no
+         from lcsdb__t_order t_order
+         where t_order.paytime between '2021-08-01' and '2021-09-01'
+           and t_order.price <> 0
+     ) income
+     on refund.order_no = income.order_no;
